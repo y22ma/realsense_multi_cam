@@ -5,27 +5,29 @@
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
+#include <sensor_msgs/distortion_models.h>
 #include <std_msgs/Header.h>
 #include <ros/ros.h>
 
 #include <iostream>
 #include <algorithm>
 
-void rsIntrinsics2CamerInfo(const rs::intrinsics& intrinsics, sensor::msgs::CameraInfo& cam_info)
+void rsIntrinsics2CameraInfo(const rs::intrinsics& intrinsics, sensor_msgs::CameraInfo& cam_info)
 {
   cam_info.width  = intrinsics.width;
   cam_info.height = intrinsics.height;
   cam_info.distortion_model = sensor_msgs::distortion_models::PLUMB_BOB;
-  cam_info.D[0] = intrinsics.coeff[0];
-  cam_info.D[1] = intrinsics.coeff[1];
-  cam_info.D[2] = intrinsics.coeff[2];
-  cam_info.D[3] = intrinsics.coeff[3];
-  cam_info.D[4] = intrinsics.coeff[4];
-  cam_info.K[0] = intrinsics.fx; cam_info[i].K[1] = 0; cam_info[i].K[2] = ppx;
-  cam_info.K[3] = 0; cam_info[i].K[4] = intrinsics.fy; cam_info[i].K[5] = ppy;
-  cam_info.K[6] = 0; cam_info[i].K[7] = 0; cam_info[i].K[8] = 1;
-  cam_info.binning_x = 1; 
-  cam_info.binning_y = 1; 
+  cam_info.D.resize(5);
+  cam_info.D[0] = intrinsics.coeffs[0];
+  cam_info.D[1] = intrinsics.coeffs[1];
+  cam_info.D[2] = intrinsics.coeffs[2];
+  cam_info.D[3] = intrinsics.coeffs[3];
+  cam_info.D[4] = intrinsics.coeffs[4];
+  cam_info.K[0] = intrinsics.fx; cam_info.K[1] = 0; cam_info.K[2] = intrinsics.ppx;
+  cam_info.K[3] = 0; cam_info.K[4] = intrinsics.fy; cam_info.K[5] = intrinsics.ppy;
+  cam_info.K[6] = 0; cam_info.K[7] = 0; cam_info.K[8] = 1;
+  cam_info.binning_x = 1;
+  cam_info.binning_y = 1;
   cam_info.roi.x_offset = 0;
   cam_info.roi.y_offset = 0;
   cam_info.roi.width = cam_info.width;
@@ -66,6 +68,7 @@ int main(int argc, char * argv[]) try
   }
 
   // Configure and start our devices
+  int i = 0;
   for(auto dev : devices)
   {
     ROS_INFO("Starting %s...", dev->get_name());
@@ -73,12 +76,13 @@ int main(int argc, char * argv[]) try
     dev->enable_stream(rs::stream::color, 1920, 1080, rs::format::bgr8, fps);
     rs::intrinsics depth_intrinsics = dev->get_stream_intrinsics(rs::stream::depth);
     rs::intrinsics color_intrinsics = dev->get_stream_intrinsics(rs::stream::color);
-    
+
     rsIntrinsics2CameraInfo(depth_intrinsics, depth_infos[i]);
-    rsIntrinsics2CameraInfo(color_intrinsics, camera_infos[i]);
+    rsIntrinsics2CameraInfo(color_intrinsics, rgb_infos[i]);
 
     dev->start();
     ROS_INFO("done.");
+    ++i;
   }
 
   // Depth and color
@@ -114,8 +118,8 @@ int main(int argc, char * argv[]) try
       cv_img.image = rgb_img;
       rgb_pubs[i].publish(cv_img);
       rgb_infos[i].header = header;
-      rgb_info_pubs[i].publish(color_infos[i]);
-      ++i
+      rgb_info_pubs[i].publish(rgb_infos[i]);
+      ++i;
     }
     ++header.seq;
   }
