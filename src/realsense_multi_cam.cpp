@@ -15,6 +15,9 @@ int main(int argc, char * argv[]) try
   ros::init(argc, argv, "kcf_tracker");
   ros::NodeHandle nh;
 
+  int32_t fps;
+  ros::param::param<int32_t>("fps", fps, 30);
+
   rs::context ctx;
   if(ctx.get_device_count() == 0) throw std::runtime_error("No device detected. Is it plugged in?");
 
@@ -33,8 +36,8 @@ int main(int argc, char * argv[]) try
   for(auto dev : devices)
   {
     std::cout << "Starting " << dev->get_name() << "... ";
-    dev->enable_stream(rs::stream::depth, 640, 480, rs::format::z16, 30);
-    dev->enable_stream(rs::stream::color, 1920, 1080, rs::format::bgr8, 30);
+    dev->enable_stream(rs::stream::depth, 640, 480, rs::format::z16, fps);
+    dev->enable_stream(rs::stream::color, 1920, 1080, rs::format::bgr8, fps);
     dev->start();
     std::cout << "done." << std::endl;
   }
