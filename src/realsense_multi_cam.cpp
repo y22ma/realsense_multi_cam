@@ -41,7 +41,7 @@ int main(int argc, char * argv[]) try
   ros::NodeHandle nh;
 
   int32_t fps;
-  ros::param::param<int32_t>("fps", fps, 30);
+  ros::param::param<int32_t>("~fps", fps, 30);
 
   rs::context ctx;
   if(ctx.get_device_count() == 0) throw std::runtime_error("No device detected. Is it plugged in?");
