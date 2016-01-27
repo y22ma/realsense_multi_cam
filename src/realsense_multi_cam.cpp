@@ -40,8 +40,8 @@ int main(int argc, char * argv[]) try
   ros::init(argc, argv, "kcf_tracker");
   ros::NodeHandle nh;
 
-  int32_t fps;
-  ros::param::param<int32_t>("~fps", fps, 30);
+  int32_t skip_frame_num;
+  ros::param::param<int32_t>("~skip_frame_num", skip_frame_num, 5);
 
   rs::context ctx;
   if(ctx.get_device_count() == 0) throw std::runtime_error("No device detected. Is it plugged in?");
@@ -72,8 +72,8 @@ int main(int argc, char * argv[]) try
   for(auto dev : devices)
   {
     ROS_INFO("Starting %s...", dev->get_name());
-    dev->enable_stream(rs::stream::depth, 640, 480, rs::format::z16, fps);
-    dev->enable_stream(rs::stream::color, 1920, 1080, rs::format::bgr8, fps);
+    dev->enable_stream(rs::stream::depth, 640, 480, rs::format::z16, 30);
+    dev->enable_stream(rs::stream::color, 1920, 1080, rs::format::bgr8, 30);
     rs::intrinsics depth_intrinsics = dev->get_stream_intrinsics(rs::stream::depth);
     rs::intrinsics color_intrinsics = dev->get_stream_intrinsics(rs::stream::color);
 
@@ -91,13 +91,29 @@ int main(int argc, char * argv[]) try
   cv_bridge::CvImage cv_img;
 
   std_msgs::Header header;
+  int skip_count = 0;
   while (ros::ok())
   {
     int i = 0;
+    if (skip_count == skip_frame_num)
+    {
+      skip_count = 0;
+    }
+    else
+    {
+      ++skip_count;
+    }
+  
     for (auto dev : devices)
     {
       header.stamp = ros::Time::now();
       dev->wait_for_frames();
+     
+      if (skip_count != skip_frame_num)
+      {
+        continue;
+      }
+      
       const uint16_t* depth_frame = reinterpret_cast<const uint16_t*>(
           dev->get_frame_data(rs::stream::depth));
       memcpy(depth_img.data, depth_frame, depth_img.cols*depth_img.rows*sizeof(uint16_t));
@@ -126,6 +142,8 @@ int main(int argc, char * argv[]) try
 
   return EXIT_SUCCESS;
 }
+
+
 catch(const rs::error & e)
 {
     std::cerr << "RealSense error calling " << e.get_failed_function() << "("
