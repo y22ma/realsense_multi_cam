@@ -40,8 +40,13 @@ int main(int argc, char * argv[]) try
   ros::init(argc, argv, "kcf_tracker");
   ros::NodeHandle nh;
 
+  int32_t lr_threshold;
   int32_t skip_frame_num;
+  ros::param::param<int32_t>("~lr_threshold", lr_threshold, 204);
   ros::param::param<int32_t>("~skip_frame_num", skip_frame_num, 5);
+
+  bool lr_auto_exposure;
+  ros::param::param<bool>("~lr_auto_exposure", lr_auto_exposure, true);
 
   rs::context ctx;
   if(ctx.get_device_count() == 0) throw std::runtime_error("No device detected. Is it plugged in?");
@@ -72,6 +77,8 @@ int main(int argc, char * argv[]) try
   for(auto dev : devices)
   {
     ROS_INFO("Starting %s...", dev->get_name());
+    dev->set_option(rs::option::r200_lr_auto_exposure_enabled, static_cast<int32_t>(lr_auto_exposure));
+    dev->set_option(rs::option::r200_depth_control_lr_threshold, lr_threshold);
     dev->enable_stream(rs::stream::depth, 640, 480, rs::format::z16, 30);
     dev->enable_stream(rs::stream::color, 1920, 1080, rs::format::bgr8, 30);
     rs::intrinsics depth_intrinsics = dev->get_stream_intrinsics(rs::stream::depth);
@@ -103,17 +110,17 @@ int main(int argc, char * argv[]) try
     {
       ++skip_count;
     }
-  
+
     for (auto dev : devices)
     {
       header.stamp = ros::Time::now();
       dev->wait_for_frames();
-     
+
       if (skip_count != skip_frame_num)
       {
         continue;
       }
-      
+
       const uint16_t* depth_frame = reinterpret_cast<const uint16_t*>(
           dev->get_frame_data(rs::stream::depth));
       memcpy(depth_img.data, depth_frame, depth_img.cols*depth_img.rows*sizeof(uint16_t));
