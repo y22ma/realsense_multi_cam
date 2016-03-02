@@ -49,7 +49,7 @@ void publishPoints(const std_msgs::Header& header, const cv::Mat& depth_img,
     {
       // Retrieve the 16-bit depth value and map it into a depth in meters
       uint16_t depth_value = depth_img.at<uint16_t>(dy, dx);
-      float depth_in_meters = depth_value * 1000;
+      float depth_in_meters = depth_value / 1000.0f;
 
       // Skip over pixels with a depth value of zero, which is used to indicate no data
       if(depth_value == 0) continue;
