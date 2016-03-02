@@ -75,8 +75,10 @@ int main(int argc, char * argv[]) try
   ros::init(argc, argv, "realsense_multi_cam");
   ros::NodeHandle nh;
 
+  int32_t lr_threshold;
   int32_t skip_frame_num;
   bool pub_points;
+  ros::param::param<int32_t>("~lr_threshold", lr_threshold, 204);
   ros::param::param<int32_t>("~skip_frame_num", skip_frame_num, 5);
   ros::param::param<bool>("~pub_points", pub_points, false);
 
@@ -85,6 +87,9 @@ int main(int argc, char * argv[]) try
   ros::param::param<int32_t>("~rgb_height", rgb_height, 1080);
   ros::param::param<int32_t>("~depth_width", depth_width, 640);
   ros::param::param<int32_t>("~depth_height", depth_height, 480);
+
+  bool lr_auto_exposure;
+  ros::param::param<bool>("~lr_auto_exposure", lr_auto_exposure, true);
 
   rs::context ctx;
   if(ctx.get_device_count() == 0) throw std::runtime_error("No device detected. Is it plugged in?");
@@ -118,8 +123,10 @@ int main(int argc, char * argv[]) try
   for(auto dev : devices)
   {
     ROS_INFO("Starting %s...", dev->get_name());
-    dev->enable_stream(rs::stream::depth, depth_width, depth_height, rs::format::z16, 30);
-    dev->enable_stream(rs::stream::color, rgb_width, rgb_height, rs::format::bgr8, 30);
+    dev->set_option(rs::option::r200_lr_auto_exposure_enabled, static_cast<int32_t>(lr_auto_exposure));
+    dev->set_option(rs::option::r200_depth_control_lr_threshold, lr_threshold);
+    dev->enable_stream(rs::stream::depth, 640, 480, rs::format::z16, 30);
+    dev->enable_stream(rs::stream::color, 1920, 1080, rs::format::bgr8, 30);
     rs::intrinsics depth_intrinsics = dev->get_stream_intrinsics(rs::stream::depth);
     rs::intrinsics color_intrinsics = dev->get_stream_intrinsics(rs::stream::color);
 

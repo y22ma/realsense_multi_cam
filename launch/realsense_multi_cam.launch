@@ -1,5 +1,6 @@
 <launch>
-  <node pkg="realsense_multi_cam" type="realsense_multi_cam_node" name="realsense_multi_cam"
-    <param name="fps" type="int" value="5" /> 
+  <node pkg="realsense_multi_cam" type="realsense_multi_cam_node" name="realsense_multi_cam" output="screen">
+    <param name="fps" type="int" value="5" />
+    <param name="pub_points" type="boolean" value="true" />
   </node>
 </launch>
