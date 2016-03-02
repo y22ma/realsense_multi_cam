@@ -15,8 +15,8 @@ if(CMAKE_COMPILER_IS_GNUCC)
 endif(CMAKE_COMPILER_IS_GNUCC)
 
 # include_directories(include)
-include_directories(/home/yanma/LibSrc/librealsense/include)
-link_directories(/home/yanma/LibSrc/librealsense/lib)
+include_directories(/home/eagle/libraries/librealsense/include)
+link_directories(/home/eagle/libraries/librealsense/lib)
 
 ## Declare a C++ executable
 add_executable(realsense_multi_cam_node src/realsense_multi_cam.cpp)

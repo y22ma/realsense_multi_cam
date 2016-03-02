@@ -94,6 +94,15 @@ int main(int argc, char * argv[]) try
   rs::context ctx;
   if(ctx.get_device_count() == 0) throw std::runtime_error("No device detected. Is it plugged in?");
 
+  std::string top_camera_serial, front_camera_serial, bottom_camera_serial; 
+  ros::param::param<std::string>("~bottom_camera_serial", bottom_camera_serial, "-2133660284");
+  ros::param::param<std::string>("~top_camera_serial", top_camera_serial, "-2103666979");
+  ros::param::param<std::string>("~front_camera_serial", front_camera_serial, "-2113664508");
+  std::map<std::string, std::string> camera_name_table;
+  camera_name_table.insert(std::pair<std::string, std::string>(top_camera_serial, "top_camera"));
+  camera_name_table.insert(std::pair<std::string, std::string>(front_camera_serial, "front_camera"));
+  camera_name_table.insert(std::pair<std::string, std::string>(bottom_camera_serial, "bottom_camera"));
+
   // Enumerate all devices
   std::vector<rs::device *> devices;
   std::vector<ros::Publisher> depth_pubs(ctx.get_device_count());
@@ -106,23 +115,25 @@ int main(int argc, char * argv[]) try
   for(int i = 0; i < ctx.get_device_count(); ++i)
   {
     devices.push_back(ctx.get_device(i));
-    depth_pubs[i] = nh.advertise<sensor_msgs::Image>("camera" + std::to_string(i) +
-        "/depth/image_raw", 1, true);
-    rgb_pubs[i] = nh.advertise<sensor_msgs::Image>("camera" + std::to_string(i) +
-        "/rgb/image_raw", 1, true);
-    depth_info_pubs[i] = nh.advertise<sensor_msgs::CameraInfo>("camera" +
-        std::to_string(i) + "/depth/camera_info", 1, true);
-    rgb_info_pubs[i] = nh.advertise<sensor_msgs::CameraInfo>("camera" +
-        std::to_string(i) + "/rgb/camera_info", 1, true);
-    point_pubs[i] = nh.advertise<sensor_msgs::PointCloud>("camera" +
-        std::to_string(i) + "/depth/points", 1, true);
   }
 
   // Configure and start our devices
   int i = 0;
   for(auto dev : devices)
   {
-    ROS_INFO("Starting %s...", dev->get_name());
+    std::string camera_name = camera_name_table[dev->get_serial()];
+    ROS_INFO("Starting %s with serial %s mapped name %s", dev->get_name(), dev->get_serial(), camera_name.c_str());
+    depth_pubs[i] = nh.advertise<sensor_msgs::Image>(camera_name_table[dev->get_serial()] +
+        "/depth/image_raw", 1, true);
+    rgb_pubs[i] = nh.advertise<sensor_msgs::Image>(camera_name_table[dev->get_serial()] +
+        "/rgb/image_raw", 1, true);
+    depth_info_pubs[i] = nh.advertise<sensor_msgs::CameraInfo>(camera_name_table[dev->get_serial()] +
+        "/depth/camera_info", 1, true);
+    rgb_info_pubs[i] = nh.advertise<sensor_msgs::CameraInfo>(camera_name_table[dev->get_serial()] +
+        "/rgb/camera_info", 1, true);
+    point_pubs[i] = nh.advertise<sensor_msgs::PointCloud>(camera_name_table[dev->get_serial()] +
+        "/depth/points", 1, true);
+
     dev->set_option(rs::option::r200_lr_auto_exposure_enabled, static_cast<int32_t>(lr_auto_exposure));
     dev->set_option(rs::option::r200_depth_control_lr_threshold, lr_threshold);
     dev->enable_stream(rs::stream::depth, 640, 480, rs::format::z16, 30);
@@ -170,7 +181,7 @@ int main(int argc, char * argv[]) try
       const uint16_t* depth_frame = reinterpret_cast<const uint16_t*>(
           dev->get_frame_data(rs::stream::depth));
       memcpy(depth_img.data, depth_frame, depth_img.cols*depth_img.rows*sizeof(uint16_t));
-      header.frame_id = "depth_frame" + std::to_string(i);
+      header.frame_id = camera_name_table[dev->get_serial()] + "_depth_frame";
       cv_img.header = header;
       cv_img.encoding = "mono16";
       cv_img.image = depth_img;
@@ -186,7 +197,7 @@ int main(int argc, char * argv[]) try
       const uint8_t* rgb_frame = reinterpret_cast<const uint8_t*>(
           dev->get_frame_data(rs::stream::color));
       memcpy(rgb_img.data, rgb_frame, rgb_img.cols*rgb_img.rows*sizeof(uint8_t)*rgb_img.channels());
-      header.frame_id = "rgb_frame" + std::to_string(i);
+      header.frame_id = camera_name_table[dev->get_serial()] + "_rgb_frame";
       cv_img.header = header;
       cv_img.encoding = "bgr8";
       cv_img.image = rgb_img;
